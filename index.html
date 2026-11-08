@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LACUNA</title>
+<style>
+  :root { --u: 1px; --paper: #ddd4c2; --red: #c40f18; --ink: #060505; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; color: var(--paper); user-select: none; -webkit-user-select: none; }
+  #game { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); overflow: hidden; background: #000; touch-action: manipulation; }
+  #stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  #box { position: absolute; left: 0; right: 0; bottom: 0; padding: calc(var(--u)*70) 13% calc(var(--u)*34);
+    background: linear-gradient(to bottom, transparent, rgba(0,0,0,.86) 34%, rgba(0,0,0,.94)); min-height: calc(var(--u)*220);
+    transition: opacity .18s; pointer-events: none; }
+  #box.hidden { opacity: 0; }
+  #who { font-size: calc(var(--u)*17); letter-spacing: .34em; color: var(--red); height: calc(var(--u)*26); text-transform: uppercase; font-weight: 700; }
+  #txt { font-size: calc(var(--u)*26); line-height: 1.42; min-height: calc(var(--u)*76); white-space: pre-wrap; text-shadow: 0 0 calc(var(--u)*8) #000; }
+  #cue { position: absolute; right: 11%; bottom: calc(var(--u)*30); color: var(--red); font-size: calc(var(--u)*20); opacity: 0; animation: pulse 1.1s infinite; }
+  #cue.on { opacity: 1; }
+  @keyframes pulse { 50% { transform: translateY(calc(var(--u)*5)); } }
+
+  #choices { z-index: 5; position: absolute; left: 50%; bottom: 31%; transform: translateX(-50%); width: 62%; display: flex; flex-direction: column; gap: calc(var(--u)*11); }
+  .choice { font: inherit; font-size: calc(var(--u)*24); line-height: 1.25; text-align: left; color: var(--paper); background: rgba(4,3,3,.9); border: 0; border-left: calc(var(--u)*4) solid #4c0a0d;
+    padding: calc(var(--u)*13) calc(var(--u)*22); cursor: pointer; transition: transform .1s, border-color .1s, background .1s; }
+  .choice:hover, .choice:focus-visible { outline: 0; transform: translateX(calc(var(--u)*10)); border-left-color: var(--red); background: #1a0304; }
+  .choice.secret { color: #efbe12; border-left-color: #efbe12; }
+  .choice small { color: #8d8676; font-size: .72em; margin-right: .7em; }
+
+  #card { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; pointer-events: none; padding: 0 8%; }
+  #card.on { display: flex; background: rgba(0,0,0,.76); }
+  #card h2 { margin: 0; font-size: calc(var(--u)*76); font-weight: 400; letter-spacing: .16em; filter: url(#rough); }
+  #card p { margin: calc(var(--u)*18) 0 0; font-size: calc(var(--u)*25); font-style: italic; color: #a59d8c; max-width: 76%; line-height: 1.4; }
+  #card.dead h2 { color: var(--red); }
+
+  #ledger { position: absolute; left: 50%; top: 50%; width: 66%; height: 88%; transform: translate(-50%, -50%) rotate(-.6deg); background: #d6ccb6; color: #17120e; padding: calc(var(--u)*38) calc(var(--u)*56);
+    font-family: "American Typewriter", "Courier New", Courier, monospace; font-size: calc(var(--u)*20.5); line-height: 1.42; display: none; box-shadow: 0 0 calc(var(--u)*90) #000; white-space: pre-wrap; overflow: hidden; }
+  #ledger.on { display: block; }
+  #ledger .r { color: #a50c13; }
+  #ledger .big { font-size: 1.4em; letter-spacing: .1em; }
+
+  #hold { position: absolute; left: 22%; right: 22%; top: 8%; display: none; text-align: center; }
+  #hold.on { display: block; }
+  #hold b { font-size: calc(var(--u)*23); letter-spacing: .24em; color: var(--paper); font-weight: 700; background: rgba(0,0,0,.82); padding: calc(var(--u)*5) calc(var(--u)*16); }
+  #hold .bar { height: calc(var(--u)*8); margin-top: calc(var(--u)*12); background: #1b1413; }
+  #hold .bar i { display: block; height: 100%; width: 0; background: var(--red); }
+
+  #menu { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5%; background: linear-gradient(to top, rgba(0,0,0,.92), rgba(0,0,0,.6) 26%, transparent 46%); }
+  #menu.on { display: flex; }
+  #logo { position: absolute; top: 7%; left: 0; right: 0; text-align: center; }
+  #logo h1 { margin: 0; font-size: calc(var(--u)*128); font-weight: 400; letter-spacing: .3em; padding-left: .3em; filter: url(#rough); text-shadow: 0 0 calc(var(--u)*30) #000; }
+  #logo p { margin: calc(var(--u)*2) 0 0; font-size: calc(var(--u)*22); font-style: italic; color: #a59d8c; }
+  .mbtn { font: inherit; font-size: calc(var(--u)*29); letter-spacing: .12em; background: none; border: 0; color: var(--paper); padding: calc(var(--u)*6) calc(var(--u)*22); cursor: pointer; }
+  .mbtn:hover, .mbtn:focus-visible { color: var(--red); outline: 0; }
+  #msettings { display: flex; gap: calc(var(--u)*30); align-items: center; margin-top: calc(var(--u)*14); font-size: calc(var(--u)*18); color: #a59d8c; }
+  #msettings label { display: flex; gap: calc(var(--u)*9); align-items: center; cursor: pointer; }
+  #vol { width: calc(var(--u)*140); accent-color: var(--red); }
+  #reduced { accent-color: var(--red); }
+
+  #warn, #endings { position: absolute; inset: 0; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16%; }
+  #warn.on, #endings.on { display: flex; }
+  #warn h2 { font-weight: 400; color: var(--red); letter-spacing: .24em; font-size: calc(var(--u)*34); margin: 0 0 calc(var(--u)*26); }
+  #warn p { font-size: calc(var(--u)*25); line-height: 1.5; margin: 0 0 calc(var(--u)*14); }
+  #endings h2 { font-weight: 400; letter-spacing: .24em; font-size: calc(var(--u)*34); margin: 0 0 calc(var(--u)*20); }
+  #endlist { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u)*8) calc(var(--u)*50); font-size: calc(var(--u)*23); text-align: left; margin-bottom: calc(var(--u)*24); }
+  #endlist .k { color: #4a4238; }
+  #endlist .d { color: var(--red); }
+  #endlist .s { color: #efbe12; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="3" seed="4"/><feDisplacementMap in="SourceGraphic" scale="7"/></filter></svg>
+<div id="game">
+  <canvas id="stage"></canvas>
+  <div id="box" class="hidden"><div id="who"></div><div id="txt"></div><div id="cue">&#9662;</div></div>
+  <div id="choices"></div>
+  <div id="hold"><b>HOLD SPACE &mdash; KEEP STILL</b><div class="bar"><i></i></div></div>
+  <div id="card"><h2></h2><p></p></div>
+  <div id="ledger"></div>
+  <div id="menu">
+    <div id="logo"><h1>LACUNA</h1><p>n. a gap where something should be</p></div>
+    <button class="mbtn" id="mstart">Be admitted</button>
+    <button class="mbtn" id="mend">Discharge records</button>
+    <div id="msettings">
+      <label>Volume <input id="vol" type="range" min="0" max="100" value="80"></label>
+      <label><input id="reduced" type="checkbox"> Reduced flashes</label>
+    </div>
+  </div>
+  <div id="endings"><h2>DISCHARGE RECORDS</h2><div id="endlist"></div><button class="mbtn" id="mback">Back</button></div>
+  <div id="warn">
+    <h2>BEFORE YOU ARE ADMITTED</h2>
+    <p>For adults only. This game contains graphic gore, surgical mutilation including genital mutilation, death, and body horror.</p>
+    <p>It also contains loud jump scares and sudden flashes. Sound on, but not too loud. You can reduce flashes on the next screen.</p>
+    <button class="mbtn" id="wgo">I am an adult. Continue.</button>
+  </div>
+</div>
+<script src="js/art.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/rhythm.js"></script>
+<script src="js/clown.js"></script>
+<script src="js/story.js"></script>
+<script src="js/engine.js"></script>
+</body>
+</html>
